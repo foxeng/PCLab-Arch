@@ -1,0 +1,82 @@
+- Rationale
+Two main approaches were considered: LVM and BTRFS snapshots. The pros and cons
+of each are listed here:
+BTRFS:
+	+	Somewhat simpler to handle (fewer new concepts, uses regular fs
+		operations like mv).
+	+	Many report better performance than LVM snapshots (at least regular (not
+		thin) LVM snapshots)
+	-	No easy way to revert root snapshot because the subvolume needs to be
+		unmounted in order to be moved or deleted and the root fs cannot of
+		course be unmounted.
+	?	Performance limitations when the fs approaches full capacity?
+	?	Need to run balance regularly?
+
+LVM (regular LV):
+	+	Auto revert on reboot if LV is busy (easy to revert root, but still need
+		to take a new snapshot after that).
+	-	Static LV and snapshot allocation.
+	?	Auto-extend to remedy static allocation?
+
+LVM (thin LV):
+	+	Dynamic LV and snapshot allocation (from the thin pool).
+	-	No auto revert (revert just like in the BTRFS case).
+	-	Needs extra modifications (initramfs) to boot from thin LV.
+We went with BTRFS.
+
+- Implementation
+Using a single disk partition for the file system and a flat layout for the
+subvolumes, we end up with the following layout:
+toplevel             (volume root directory, to be mounted at /root/btrfs-root)
+	+-- rootfs       (subvolume root directory, to be mounted at /)
+	+-- rootfs-snap  (subvolume root directory, snapshot of the desired state for /)
+	+-- home         (subvolume root directory, to be mounted at /home)
+	\-- home-snap    (subvolume root directory, snapshot of the desired state for /home)
+Reverting / when the system boots is achieved through the initramfs (initial ram
+filesystem or early user space). The default initramfs is modified to include a
+custom hook (revert) which deletes the rootfs subvolume and recreates it from
+rootfs-snap on system bootup. For details see skel/etc/initcpio/hooks/revert.
+Reverting /home when the user logs in is achieved through the display manager,
+by specifying a script (skel/usr/local/sbin/revert-home.sh) to be run right
+before a user's login is completed. This script just replaces the home subvolume
+with a snapshot of the home-snap subvolume.
+
+- How-to
+* Make a change under /home permanent (eg, change user settings for the desktop
+environment): either make the desired change in home-snap directly (it will
+take effect the next time the user logs in) or change home and then recreate
+home-snap from it (user should not be logged in when the new snapshot is taken).
+* Make a change to the system permanent (eg add/remove/upgrade packages): run
+replace-snap.sh so that next time the system boots from the same subvolume
+(rootfs) and updates rootfs-snap. This effectively sets as the desired state for
+the root filesystem the state of the currently booted subvolume when the system
+next is powered off. Thus, it makes no difference when exactly this script is
+run. When it is run, the state of the system at the time it powers off will be
+the new permanent system state.
+NOTE: this script should be run ONCE (actually, an odd number of times) to
+achieve the desired effect. If it is run an even number of times, on next bootup
+the system will be reverted to the previous desired state as usual.
+CAUTION: since the state with which the system next powers off will become
+permanent, caution is required for it to really be the desired one.
+
+- Reference
+BTRFS:
+	https://wiki.archlinux.org/index.php/Btrfs
+	man btrfs
+	man btrfs-subvolume
+	https://btrfs.wiki.kernel.org/index.php/Main_Page
+	https://btrfs.wiki.kernel.org/index.php/SysadminGuide
+	https://wiki.gentoo.org/wiki/Btrfs
+LVM:
+	General:
+	https://wiki.archlinux.org/index.php/LVM
+	man lvm
+	https://wiki.gentoo.org/wiki/LVM
+	https://www.golinuxhub.com/2017/09/understanding-lvm-snapshots-create.html
+	https://www.tecmint.com/setup-thin-provisioning-volumes-in-lvm/
+	Performance:
+	https://www.nikhef.nl/~dennisvd/lvmcrap.html
+	https://unix.stackexchange.com/questions/270845/lvm-snapshot-performance-for-write-only-data
+Initramfs:
+	https://en.wikipedia.org/wiki/Initial_ramdisk
+	https://wiki.archlinux.org/index.php/Mkinitcpio

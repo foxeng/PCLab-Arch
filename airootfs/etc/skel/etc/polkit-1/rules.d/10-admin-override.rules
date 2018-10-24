@@ -1,0 +1,23 @@
+// Prevent suspend and hibernate for labuser
+polkit.addRule(function(action, subject) {
+    if ((action.id == "org.freedesktop.login1.suspend" ||
+         action.id == "org.freedesktop.login1.suspend-multiple-sessions" ||
+         action.id == "org.freedesktop.login1.hibernate" ||
+         action.id == "org.freedesktop.login1.hibernate-multiple-sessions") &&
+        subject.user == "labuser")
+    {
+        return polkit.Result.NO;
+    }
+});
+
+// Prevent shut down for labuser
+polkit.addRule(function(action, subject) {
+    if ((action.id == "org.freedesktop.login1.halt" ||
+         action.id == "org.freedesktop.login1.halt-multiple-sessions" ||
+         action.id == "org.freedesktop.login1.power-off" ||
+         action.id == "org.freedesktop.login1.power-off-multiple-sessions") &&
+        subject.user == "labuser")
+    {
+        return polkit.Result.NO;
+    }
+});

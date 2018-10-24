@@ -1,0 +1,9 @@
+virtualbox-host-modules-arch
+virtualbox-guest-iso
+linux-headers
+
+hunspell-en_US
+hunspell-el
+hyphen-en
+libmythes
+mythes-en

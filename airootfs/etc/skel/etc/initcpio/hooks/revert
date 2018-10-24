@@ -1,0 +1,13 @@
+#!/bin/sh
+
+run_hook() {
+	mkdir -p /mnt/btrfs-root
+	mount -o subvol=/ -L ROOT /mnt/btrfs-root
+
+	rec-sub-del.sh rootfs /mnt/btrfs-root
+	# This will, as always, not snapshot any subvolumes below rootfs-snap (but there shouldn't be any)
+	btrfs subvolume snapshot /mnt/btrfs-root/rootfs-snap /mnt/btrfs-root/rootfs
+
+	umount /mnt/btrfs-root
+	rmdir /mnt/btrfs-root
+}
