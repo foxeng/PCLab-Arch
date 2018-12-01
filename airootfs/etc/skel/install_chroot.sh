@@ -61,10 +61,6 @@ pacman -S --noconfirm virtualbox
 pacman -U --noconfirm /packages/hyphen-el-*.pkg.tar.xz
 # Install mythes-el
 pacman -U --noconfirm /packages/mythes-el-*.pkg.tar.xz
-# Install jupyterlab_launcher
-pacman -U --asdeps --noconfirm /packages/jupyterlab_launcher-*.pkg.tar.xz
-# Install JupyterLab
-pacman -U --noconfirm /packages/jupyterlab-*.pkg.tar.xz
 # Install Tomcat (a local installation in the user's home is the only way to
 # avoid the need to grant the user unnecessary privileges to use a system-wide
 # installation)
