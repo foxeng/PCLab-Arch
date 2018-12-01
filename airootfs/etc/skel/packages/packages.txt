@@ -35,7 +35,7 @@ xfce4-xkb-plugin
 ttf-dejavu
 gvfs
 
-jdk8-openjdk
+jdk-openjdk
 wireshark-qt
 octave
 firefox
@@ -66,6 +66,7 @@ smbclient
 gvfs-smb
 python2
 jupyter-notebook
+jupyterlab
 tcpdump
 sudo
 traceroute
