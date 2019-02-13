@@ -67,6 +67,10 @@ pacman -U --noconfirm /packages/mythes-el-*.pkg.tar.xz
 mkdir /home/labuser/opt
 cp -r /packages/tomcat/ /home/labuser/opt/
 chown -R labuser:labuser /home/labuser/opt/
+# Install Python packages with pip (do a user install)
+mkdir -p /home/labuser/.local
+PYTHONUSERBASE=/home/labuser/.local pip install --user -r /packages/requirements.txt
+chown -R labuser:labuser /home/labuser/.local/
 
 # Configure SSH (root access, only with a key)
 mkdir -p /root/.ssh
@@ -78,6 +82,11 @@ echo '
 PasswordAuthentication no' >> /etc/ssh/sshd_config
 systemctl enable sshd.socket
 # Configure LightDM (run revert-home.sh right before the user is logged in)
+# NOTE: if the user has logged out and upon trying to login again, although the
+# password entered is right, the screen flickers and the LightDM greeter
+# reappears with no feedback, it's probably because revert-home.sh has failed
+# (which in turn probably happens because it can't unmount /home, in which case
+# just waiting for a couple of minutes before retrying the login might work).
 sed -i -e 's/#session-setup-script=/session-setup-script=\/usr\/local\/sbin\/revert-home.sh/g' /etc/lightdm/lightdm.conf
 systemctl enable lightdm.service
 # Don't let labuser use dm-tool (because it enables session locking, user
@@ -112,6 +121,9 @@ jupyter nbextension enable --py --sys-prefix widgetsnbextension
 # tcpdump with it)
 echo '## Allow labuser to use tcpdump
 labuser ALL=(ALL) NOPASSWD: /usr/bin/tcpdump' >> /etc/sudoers
+# Configure Arduino IDE (see https://wiki.archlinux.org/index.php/Arduino#Installation)
+gpasswd -a labuser uucp
+gpasswd -a labuser lock
 
 # Boot loader
 # Make the third entry (this should be Windows) the default in GRUB's menu and

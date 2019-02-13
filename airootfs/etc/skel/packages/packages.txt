@@ -71,3 +71,4 @@ tcpdump
 sudo
 traceroute
 inkscape
+arduino
