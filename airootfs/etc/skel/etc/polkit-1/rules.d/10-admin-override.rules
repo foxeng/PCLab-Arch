@@ -23,9 +23,10 @@ polkit.addRule(function(action, subject) {
 });
 
 
-// Prevent running xfsm-shutdown-helper for labuser
+// Prevent running xfsm-shutdown-helper and xfce4-pm-helper for labuser
 polkit.addRule(function(action, subject) {
-    if (action.id == "org.xfce.session.xfsm-shutdown-helper" &&
+    if ((action.id == "org.xfce.session.xfsm-shutdown-helper" ||
+         action.io == "org.xfce.power.xfce4-pm-helper") &&
         subject.user == "labuser")
     {
         return polkit.Result.NO;
