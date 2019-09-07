@@ -86,6 +86,7 @@ echo hostname=$hostname
 # Copy user files to the new system (temporary)
 mkdir /mnt/config
 cp config/id_rsa.pub /mnt/config/
+cp etc/pacman.d/hooks/disable-dm-tool.hook /mnt/config/
 tar -xf config/chromium.tar.gz -C /mnt/config/
 tar -xf config/geany.tar.gz -C /mnt/config/
 tar -xf config/mozilla.tar.gz -C /mnt/config/
