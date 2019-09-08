@@ -36,6 +36,8 @@ ttf-dejavu
 gvfs
 
 jdk-openjdk
+maven
+gradle
 wireshark-qt
 octave
 firefox
@@ -50,6 +52,7 @@ geany
 evince
 gdb
 valgrind
+git
 gnome-calculator
 catfish
 gstreamer
