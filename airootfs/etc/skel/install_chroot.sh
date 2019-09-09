@@ -89,13 +89,6 @@ systemctl enable sshd.socket
 # just waiting for a couple of minutes before retrying the login might work).
 sed -i -e 's/#session-setup-script=/session-setup-script=\/usr\/local\/sbin\/revert-home.sh/g' /etc/lightdm/lightdm.conf
 systemctl enable lightdm.service
-# Don't let labuser use dm-tool (because it enables session locking, user
-# switching, etc): remove execute permission for labuser using an ACL. Also
-# set up a post-transaction pacman hook to do this every time the binary
-# is upgraded.
-setfacl -m "u:labuser:r--" /usr/bin/dm-tool
-mkdir -p /etc/pacman.d/hooks
-cp /config/disable-dm-tool.hook /etc/pacman.d/hooks/
 # Configure Xfce
 mkdir /home/labuser/.config
 cp -r /config/xfce4/ /home/labuser/.config/

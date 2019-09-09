@@ -74,6 +74,8 @@ cp etc/initcpio/install/revert /mnt/etc/initcpio/install/revert
 cp etc/initcpio/hooks/revert /mnt/etc/initcpio/hooks/revert
 cp usr/local/sbin/* /mnt/usr/local/sbin/
 cp etc/polkit-1/rules.d/10-admin-override.rules /mnt/etc/polkit-1/rules.d/
+mkdir -p /mnt/etc/lightdm/lightdm.conf.d
+cp etc/lightdm/lightdm.conf.d/50-local.conf /mnt/etc/lightdm/lightdm.conf.d/
 cp etc/lightdm/lightdm-gtk-greeter.conf /mnt/etc/lightdm/
 
 # Chroot
@@ -86,7 +88,6 @@ echo hostname=$hostname
 # Copy user files to the new system (temporary)
 mkdir /mnt/config
 cp config/id_rsa.pub /mnt/config/
-cp etc/pacman.d/hooks/disable-dm-tool.hook /mnt/config/
 tar -xf config/chromium.tar.gz -C /mnt/config/
 tar -xf config/geany.tar.gz -C /mnt/config/
 tar -xf config/mozilla.tar.gz -C /mnt/config/
