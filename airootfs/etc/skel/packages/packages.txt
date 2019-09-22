@@ -45,6 +45,7 @@ flashplugin
 chromium
 pepper-flash
 netbeans
+eclipse-jee
 libreoffice-fresh
 gvim
 emacs
