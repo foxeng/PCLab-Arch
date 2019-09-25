@@ -50,12 +50,14 @@ home-snap from it (user should not be logged in when the new snapshot is taken).
 replace-snap.sh so that next time the system boots from the same subvolume
 (rootfs) and updates rootfs-snap. This effectively sets as the desired state for
 the root filesystem the state of the currently booted subvolume when the system
-next is powered off. Thus, it makes no difference when exactly this script is
-run. When it is run, the state of the system at the time it powers off will be
-the new permanent system state.
+is next powered off.
 NOTE: this script should be run ONCE (actually, an odd number of times) to
-achieve the desired effect. If it is run an even number of times, on next bootup
-the system will be reverted to the previous desired state as usual.
+achieve the desired effect.
+CAUTION: the only thing that is captured at the time the script is run is the
+/boot directory of the currently running filesystem, thus caution is required
+for that directory (containing the kernel image) to be the desired one _at the
+time the script is run_ (eg if you wish to upgrade the kernel, this script
+should be run *after* the new kernel image has been generated).
 CAUTION: since the state with which the system next powers off will become
 permanent, caution is required for it to really be the desired one.
 
