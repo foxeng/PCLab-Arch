@@ -80,7 +80,7 @@ chmod 600 /root/.ssh/authorized_keys
 echo '
 # Disable password logins (only use SSH keys)
 PasswordAuthentication no' >> /etc/ssh/sshd_config
-systemctl enable sshd.socket
+systemctl enable sshd.service
 # Configure LightDM (run revert-home.sh right before the user is logged in)
 # NOTE: if the user has logged out and upon trying to login again, although the
 # password entered is right, the screen flickers and the LightDM greeter

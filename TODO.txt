@@ -2,3 +2,5 @@
 (because of background processes running for labuser). Killing the processes
 doesn't really work because things (e.g. XFCE) start failing if we do so.
 - LDAP authentication for user login
+- Refactor: Move stuff out of the installer and into Ansible roles (or at least
+playbooks).
