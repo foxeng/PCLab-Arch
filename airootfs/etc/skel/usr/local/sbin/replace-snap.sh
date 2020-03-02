@@ -13,6 +13,6 @@ mv /root/btrfs-root/rootfs-tmp /root/btrfs-root/rootfs-snap
 # (the one from the previous snapshot). To correct that, we copy /boot from the
 # current system there.
 rm -rf /root/btrfs-root/rootfs/boot
-cp -r /boot /root/btrfs-root/rootfs/
+cp -r /root/btrfs-root/rootfs-snap/boot /root/btrfs-root/rootfs/
 
 # TODO OPT: Keep a temporary backup of /boot on the snapshot?
