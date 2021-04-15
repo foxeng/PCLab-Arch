@@ -1,0 +1,7 @@
+#!/bin/sh
+
+build() {
+	add_binary btrfs
+	add_binary rec-sub-del.sh
+	add_runscript
+}

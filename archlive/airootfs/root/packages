@@ -1,0 +1,16 @@
+base
+base-devel
+btrfs-progs
+dosfstools
+efibootmgr
+grub
+intel-ucode
+linux
+linux-firmware
+mkinitcpio
+ntfs-3g
+openssh
+os-prober
+pacman-contrib
+python
+rsync
