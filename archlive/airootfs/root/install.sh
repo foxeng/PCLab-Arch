@@ -115,15 +115,15 @@ mkswap --label ${swlabel} "${swpart}" || exit 1
 
 # Create main btrfs subvolumes
 mount -o subvol=/ "${rootpart}" /mnt &&
-	btrfs subvolume create /mnt/rootfs &&
+	btrfs subvolume create /mnt/root.next &&
 	btrfs subvolume create /mnt/home &&
 	umount /mnt || exit 1
 
 # Mount the file systems
-mount -o subvol=rootfs "${rootpart}" /mnt || exit 1
+mount -o subvol=root.next "${rootpart}" /mnt || exit 1
 if [[ ${UEFI} ]]; then
-	mkdir /mnt/boot &&
-		mount "${esp}" /mnt/boot || exit 1
+	mkdir /mnt/efi &&
+		mount "${esp}" /mnt/efi || exit 1
 fi
 swapon "${swpart}" || exit 1
 
@@ -160,7 +160,7 @@ genfstab -L /mnt >> /mnt/etc/fstab || exit 1
 gawk -i inplace -f - /mnt/etc/fstab <<'EOF' || exit 1
 /LABEL=ROOT/    {
 	# Map mount points to subvolumes
-	subvols["/"] = "rootfs"
+	subvols["/"] = "root.next"
 	subvols["/home"] = "home"
 	subvols["/root/btrfs-root"] = "/"
 
@@ -208,7 +208,6 @@ install --mode 755 /root/install-chroot.sh /mnt/ &&
 # Create snapshots
 umount -R /mnt &&
 	mount -o subvol=/ "${rootpart}" /mnt &&
-	btrfs subvolume snapshot /mnt/home /mnt/home-snap &&
-	btrfs subvolume snapshot /mnt/rootfs /mnt/rootfs-snap || exit 1
+	btrfs subvolume snapshot /mnt/home /mnt/home-snap || exit 1
 
 poweroff

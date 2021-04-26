@@ -1,14 +1,18 @@
 #!/bin/sh
 
 run_hook() {
-	mkdir -p /mnt/btrfs-root
-	mount -o subvol=/ -L ROOT /mnt/btrfs-root
+	local TOP=/mnt/btrfs-root
 
-	rec-sub-del.sh rootfs /mnt/btrfs-root
-	# This will, as always, not snapshot any subvolumes below rootfs-snap (but
+	mkdir -p "${TOP}" &&
+		mount -o subvol=/ -L ROOT "${TOP}" || return 1
+
+	if [ -d "${TOP}/root.bak" ]; then
+		rec-sub-del.sh root.bak "${TOP}" || return 1
+	fi
+	# This will, as always, not snapshot any subvolumes below root.next (but
 	# there shouldn't be any)
-	btrfs subvolume snapshot /mnt/btrfs-root/rootfs-snap /mnt/btrfs-root/rootfs
+	btrfs subvolume snapshot "${TOP}/root.next" "${TOP}/root.bak" || return 1
 
-	umount /mnt/btrfs-root
-	rmdir /mnt/btrfs-root
+	umount "${TOP}" &&
+		rmdir "${TOP}" || return 1
 }
