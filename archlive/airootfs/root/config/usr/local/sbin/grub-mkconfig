@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Fail if the currently booted subvolume is not root.next. This is necessary
+# because grub-mkconfig records the current subvolume's name in grub.cfg, and
+# that name is subsequently used by GRUB at boot time. So, to maintain that
+# GRUB always uses root.next to boot, that should always be the current
+# subvolume when grub-mkconfig runs.
+
+# Determine currently booted subvolume
+curr=$(findmnt --noheadings --raw --output FSROOT --mountpoint /) || exit 1
+if [ "${curr}" != "/root.next" ]; then
+    echo "Subvolume currently booted is ${curr}. Want /root.next" >&2
+    exit 1
+fi
+
+/usr/bin/grub-mkconfig "${@}"

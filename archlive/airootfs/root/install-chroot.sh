@@ -14,7 +14,9 @@ echo "chroot disk=${disk}"
 # Enable TRIM, if supported
 trim=$(lsblk --nodeps --noheadings --list --output DISC-GRAN "/dev/${disk}" \
 	| head --lines 1 | xargs) || exit 1   # xargs to remove whitespace
-[[ "${trim}" != "0B" ]] && systemctl enable fstrim.timer
+if [[ "${trim}" != "0B" ]]; then
+	systemctl enable fstrim.timer || exit 1
+fi
 
 # Timezone
 # We can't use timedatectl under a chroot because it requires an active dbus
@@ -83,13 +85,20 @@ install --directory --mode 700 /root/.ssh &&
 	systemctl enable sshd.service || exit 1
 
 # Boot loader
-# Check if / and /boot are on different devices to see if on UEFI or not
-if [[ $(stat -c '%d' /) = $(stat -c '%d' /boot) ]]; then
-	grub-install --target=i386-pc "/dev/${disk}" || exit 1
-else
+if [[ -d /efi ]]; then
 	grub-install \
 		--target=x86_64-efi \
-		--efi-directory=/boot \
+		--efi-directory=/efi \
 		--bootloader-id=GRUB || exit 1
+else
+	grub-install --target=i386-pc "/dev/${disk}" || exit 1
 fi
 grub-mkconfig -o /boot/grub/grub.cfg || exit 1
+
+# Enable the root file system reversion service
+systemctl enable revert-next.service || exit 1
+
+# Backup the ESP
+if [[ -d /efi ]]; then
+	mkdir /root/bak && cp -a /efi /root/bak/ || exit 1
+fi

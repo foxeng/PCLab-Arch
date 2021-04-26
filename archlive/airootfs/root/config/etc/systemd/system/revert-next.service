@@ -1,0 +1,12 @@
+[Unit]
+Description=Prepare next boot by reverting boot.next
+Requires=local-fs.target
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/make-current.sh
+
+[Install]
+WantedBy=multi-user.target
