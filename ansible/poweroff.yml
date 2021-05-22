@@ -1,0 +1,13 @@
+---
+- name: Power off the system
+  hosts: pclab
+  gather_facts: no
+  vars:
+    delay_minutes: 1
+  tasks:
+  - name: Power off
+    # NOTE: The delay is added to avoid ansible hanging until it times out.
+    ansible.builtin.command: "shutdown +{{ delay_minutes }}"
+  - name: Remind user about the delay
+    ansible.builtin.debug:
+      msg: "System will power off in {{ delay_minutes }} minute(s)"

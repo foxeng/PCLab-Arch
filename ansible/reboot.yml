@@ -1,0 +1,13 @@
+---
+- name: Reboot the system
+  hosts: pclab
+  gather_facts: no
+  vars:
+    delay_minutes: 1
+  tasks:
+  - name: Reboot (without waiting for the remotes to come back up)
+    # NOTE: The delay is added to avoid ansible hanging until it times out.
+    ansible.builtin.command: "shutdown -r +{{ delay_minutes }}"
+  - name: Remind user about the delay
+    ansible.builtin.debug:
+      msg: "System will reboot in {{ delay_minutes }} minute(s)"

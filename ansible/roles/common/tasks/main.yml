@@ -1,0 +1,286 @@
+---
+- name: Setup user
+  # TODO OPT: PAM, LDAP
+  block:
+  - name: Create labuser
+    ansible.builtin.user:
+      name: labuser
+      create_home: yes
+      password: "{{ 'labuser' | password_hash('sha512') }}"
+      state: present
+  - name: Create desktop directories
+    ansible.builtin.file:
+      group: labuser
+      owner: labuser
+      path: "/home/labuser/{{ item }}"
+      state: directory
+    loop:
+    - Desktop
+    - Documents
+    - Downloads
+  - name: Create local bin directories and add them to PATH
+    vars:
+      opt_bin_dir: /home/labuser/opt/bin
+      local_bin_dir: /home/labuser/.local/bin
+    block:
+    - name: Create local bin directories
+      ansible.builtin.file:
+        group: labuser
+        owner: labuser
+        path: "{{ item }}"
+        state: directory
+      loop:
+      - "{{ opt_bin_dir }}"
+      - "{{ local_bin_dir }}"
+    - name: Add local bin directories to labuser's PATH
+      ansible.builtin.lineinfile:
+        group: labuser
+        line: "export PATH={{ item }}:$PATH"
+        owner: labuser
+        path: /home/labuser/.bashrc
+        state: present
+      loop:
+      - "{{ opt_bin_dir }}"
+      - "{{ local_bin_dir }}"
+  tags:
+  - user
+
+- name: Configure GRUB
+  block:
+  - name: Enable os-prober
+    ansible.builtin.lineinfile:
+      line: GRUB_DISABLE_OS_PROBER=false
+      path: /etc/default/grub
+      regexp: ^GRUB_DISABLE_OS_PROBER=
+      state: present
+  - name: Default to Windows
+    ansible.builtin.lineinfile:
+      line: GRUB_DEFAULT=2
+      path: /etc/default/grub
+      regexp: ^GRUB_DEFAULT=
+      state: present
+  - name: Increase timeout
+    ansible.builtin.lineinfile:
+      line: GRUB_TIMEOUT=900
+      path: /etc/default/grub
+      regexp: ^GRUB_TIMEOUT=
+      state: present
+  # TODO OPT: Re-generate grub.cfg here.
+  tags:
+  - grub
+
+- name: Upgrade system
+  community.general.pacman:
+    update_cache: yes
+    upgrade: yes
+  tags:
+  - upgrade
+
+- name: Setup desktop
+  block:
+  - name: Install Xorg
+    # Xorg:
+    #   common: mesa xorg-server libva-vdpau-driver libvdpau-va-gl
+    #   m1: xf86-video-intel vulkan-intel libva-intel-driver
+    #   m2: xf86-video-ati vulkan-radeon amdvlk libva-mesa-driver mesa-vdpau
+    #   m3: xf86-video-intel vulkan-intel intel-media-driver
+    community.general.pacman:
+      name:
+      - mesa
+      - xorg-server
+      - libva-vdpau-driver
+      - libvdpau-va-gl
+      - xf86-video-intel
+      - vulkan-intel
+      - libva-intel-driver
+      - xf86-video-ati
+      - vulkan-radeon
+      - amdvlk
+      - libva-mesa-driver
+      - mesa-vdpau
+      - intel-media-driver
+      state: present
+    tags:
+    - xorg
+  - name: Setup Xfce
+    block:
+    - name: Install Xfce
+      community.general.pacman:
+        name:
+        - xfce4
+        - xfce4-notifyd
+        - xfce4-screenshooter
+        - xfce4-taskmanager
+        - htop
+        - xfce4-whiskermenu-plugin
+        - xfce4-xkb-plugin
+        - ttf-dejavu
+        - sshfs # NOTE: Would be --asdeps if thunar listed it as such
+        - catfish
+        - xfce4-pulseaudio-plugin
+        state: present
+    - name: Install optional Xfce dependencies
+      community.general.pacman:
+        extra_args: "--asdeps"
+        name:
+        - thunar-archive-plugin
+        - file-roller
+        - gvfs
+        - gvfs-smb
+        - gvfs-nfs
+        - gvfs-mtp
+        - mlocate
+        - pavucontrol
+        - pulseaudio
+        state: present
+    - name: Configure Xfce
+      # TODO OPT: Use community.general.xfconf instead?
+      ansible.builtin.copy:
+        dest: /home/labuser/.config/
+        group: labuser
+        owner: labuser
+        src: "{{ item }}"
+      loop:
+      - xfce4
+      - Thunar
+    - name: Configure Samba (https://wiki.archlinux.org/title/Samba#Client)
+      block:
+      - name: Ensure /etc/samba exists
+        ansible.builtin.file:
+          path: /etc/samba
+          state: directory
+      - name: Ensure /etc/samba/smb.conf exists
+        ansible.builtin.file:
+          path: /etc/samba/smb.conf
+          state: touch
+    tags:
+    - xfce
+  - name: Setup LightDM
+    block:
+    - name: Install LightDM
+      community.general.pacman:
+        name:
+        - lightdm
+        state: present
+    - name: Install optional LightDM dependencies
+      community.general.pacman:
+        extra_args: "--asdeps"
+        name:
+        - lightdm-gtk-greeter
+        - accountsservice
+        state: present
+    - name: Configure LightDM
+      # TODO OPT: Use community.general.ini_file instead?
+      ansible.builtin.copy: # NOTE: Merges the two directories
+        dest: /etc/lightdm/lightdm.conf.d/
+        src: lightdm.conf.d/
+    - name: Configure LightDM GTK greeter
+      community.general.ini_file:
+        no_extra_spaces: yes
+        option: indicators
+        path: /etc/lightdm/lightdm-gtk-greeter.conf
+        section: greeter
+        state: present
+        value: "~spacer;~clock;~host;~spacer;~language;~a11y"
+    - name: Enable LightDM
+      ansible.builtin.systemd:
+        enabled: yes
+        name: lightdm.service
+    tags:
+    - lightdm
+  - name: Configure polkit
+    ansible.builtin.copy:
+      dest: /etc/polkit-1/rules.d/
+      src: rules.d/
+    tags: polkit
+  tags:
+  - desktop
+
+# TODO OPT: Xfce kiosk mode if we need to prevent labuser changing xfce settings.
+
+- name: Setup extra software
+  block:
+  - name: Setup utilities
+    block:
+    - name: Install utility packages
+      community.general.pacman:
+        name:
+        - python-pip
+        - man-db
+        - man-pages
+        - texinfo
+        - moreutils
+        - tree
+        - inetutils
+        - gnome-calculator
+        - nano
+        - mousepad
+        - gvim
+        - emacs
+        - code
+        - meld
+        - geany
+        - git
+        - chromium
+        - firefox
+        state: present
+    - name: Install optional utility dependencies
+      community.general.pacman:
+        extra_args: "--asdeps"
+        name:
+        - bash-completion
+        state: present
+    tags:
+    - utilities
+  - name: Setup multimedia
+    block:
+    - name: Install multimedia packages
+      community.general.pacman:
+        name:
+        - ristretto
+        - vlc
+        state: present
+    - name: Install optional multimedia dependencies
+      community.general.pacman:
+        name:
+        - librsvg
+        - gst-plugins-base-libs
+        state: present
+    tags:
+    - multimedia
+  - name: Setup office
+    vars:
+      remote_pkg_dir: /root/pkg/
+    block:
+    # TODO OPT: Build the packages at runtime and remove them from version control
+    - name: Copy pre-built AUR packages
+      ansible.builtin.copy:
+        dest: "{{ remote_pkg_dir }}"
+        src: pkg/
+    - name: Install office packages
+      community.general.pacman:
+        name:
+        - evince
+        - libreoffice-fresh
+        - hunspell-en_US
+        - "{{ remote_pkg_dir }}/libreoffice-extension-orthos-greek-dictionary-0.4.0-1-any.pkg.tar.zst"
+        - hyphen-en
+        - "{{ remote_pkg_dir }}/hyphen-el-1.1b-2-any.pkg.tar.zst"
+        - mythes-en
+        - "{{ remote_pkg_dir }}/libreoffice-extension-orthos-greek-thesaurus-0.4.0-1-any.pkg.tar.zst"
+        state: present
+    - name: Install optional office dependencies
+      community.general.pacman:
+        extra_args: "--asdeps"
+        name:
+        - jre-openjdk
+        - libmythes
+        state: present
+    - name: Remove pre-built AUR package files
+      ansible.builtin.file:
+        path: "{{ remote_pkg_dir }}"
+        state: absent
+    tags:
+    - office
+  tags:
+  - extra
