@@ -1,0 +1,186 @@
+---
+- name: Setup SDKs
+  community.general.pacman:
+    name:
+    - gdb
+    - valgrind
+    - clang
+    - ltrace
+    - strace
+    - jdk-openjdk
+    - maven
+    - nodejs
+    - npm
+    state: present
+  tags:
+  - sdk
+
+- name: Setup VirtualBox
+  block:
+  - name: Gather facts if necessary
+    ansible.builtin.setup: {}
+    when: ansible_facts is falsy
+  - name: Install VirtualBox dependencies
+    # NOTE: virtualbox-host-modules-arch is not an optional dependency, so
+    # needs to be installed before virtualbox itself (so as to not pull
+    # virtualbox-host-dkms which is the default).
+    community.general.pacman:
+      extra_args: "--asdeps"
+      name:
+      - virtualbox-host-modules-arch
+      - virtualbox-guest-iso
+      state: present
+  - name: Install VirtualBox
+    community.general.pacman:
+      name:
+      - virtualbox
+  - name: Add labuser to vboxusers
+    ansible.builtin.user:
+      append: yes
+      groups:
+      - vboxusers
+      name: labuser
+  # NOTE: Since version 6.1 VirtualBox only supports hardware-assisted
+  # virtualization.
+  when: "'kvm' in ansible_facts['virtualization_tech_host']"
+  tags:
+  - virtualbox
+
+- name: Setup Octave
+  block:
+  - name: Install openblas as blas provider
+    # NOTE: Needs to be installed before octave, which would pull blas by
+    # default, which conflicts with openblas.
+    community.general.pacman:
+      extra_args: "--asdeps"
+      name:
+      - openblas
+      state: present
+  - name: Install Octave
+    community.general.pacman:
+      name:
+      - octave
+      state: present
+  tags:
+  - octave
+
+- name: Setup data science software
+  block:
+  - name: Install Jupyter
+    community.general.pacman:
+      name:
+      - jupyterlab
+      # - jupyter-notebook
+      state: present
+    tags:
+    - jupyter
+  - name: Setup R
+    block:
+    - name: Install R
+      community.general.pacman:
+        name:
+        - r
+        state: present
+    - name: Install optional R dependencies
+      community.general.pacman:
+        extra_args: "--asdeps"
+        name:
+        - gcc-fortran
+        - openblas
+        state: present
+    tags:
+    - r
+  - name: Install pip packages
+    vars:
+      tmpdir: /home/labuser/tmp
+    block:
+    - name: Create temp directory for pip to use
+      ansible.builtin.file:
+        group: labuser
+        owner: labuser
+        mode: 0755
+        path: "{{ tmpdir }}"
+        state: directory
+    - name: Install / update packages with pip
+      become: yes
+      become_user: labuser
+      ansible.builtin.pip:
+        extra_args: "--user"
+        name:
+        - numpy
+        - scipy
+        - matplotlib
+        - pandas
+        - scikit-learn
+        - torch
+        - seaborn
+        - tqdm
+        - networkx
+        state: latest
+      environment:
+        TMPDIR: "{{ tmpdir }}"
+    - name: Delete temp directory for pip
+      ansible.builtin.file:
+        path: "{{ tmpdir }}"
+        state: absent
+    tags:
+    - python
+    - pip
+  - name: Install conda packages
+    vars:
+      remote_pkg_dir: /root/pkg/
+    block:
+    - name: Copy pre-built AUR packages
+      ansible.builtin.copy:
+        dest: "{{ remote_pkg_dir }}"
+        src: pkg/
+    - name: Install miniconda
+      community.general.pacman:
+        name:
+        - "{{ remote_pkg_dir }}/miniconda3-4.10.3-1-x86_64.pkg.tar.zst"
+        state: present
+    - name: Enable miniconda for all users
+      ansible.builtin.file:
+        path: /etc/profile.d/conda.sh
+        src: /opt/miniconda3/etc/profile.d/conda.sh
+        state: link
+    - name: Install packages with conda
+      # TODO OPT: Install openfst by other means to avoid conda
+      ansible.builtin.shell: |
+        source /opt/miniconda3/etc/profile.d/conda.sh &&
+          conda install -y -c conda-forge openfst=1.6.1
+    - name: Remove pre-built AUR package files
+      ansible.builtin.file:
+        path: "{{ remote_pkg_dir }}"
+        state: absent
+    tags:
+    - conda
+  tags:
+  - data-science
+
+- name: Setup networking software
+  block:
+  - name: Install packages
+    community.general.pacman:
+      name:
+      - wireshark-qt
+      - traceroute
+      - tcpdump
+      state: present
+  - name: Add labuser to wireshark
+    ansible.builtin.user:
+      append: yes
+      groups:
+      - wireshark
+      name: labuser
+  - name: Allow labuser to run tcpdump as root
+    # TODO OPT: Add alias tcpdump=sudo tcpdump?
+    ansible.builtin.lineinfile:
+      line: "labuser ALL=(ALL) NOPASSWD: /usr/bin/tcpdump"
+      path: /etc/sudoers
+      state: present
+  tags:
+  - networking
+
+# TODO OPT: tomcat mariadb java-connector phpmyadmin
+

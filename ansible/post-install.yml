@@ -1,0 +1,13 @@
+---
+- name: Configure system post-install
+  hosts: pclab
+  tasks:
+  - name: Apply base desktop configuration
+    import_role:
+      name: common
+  # TODO OPT: Apply extra too?
+  # - name: Apply course-specific configuration
+  #   import_role:
+  #     name: extra
+  - name: Persist changes
+    import_tasks: persist.yml

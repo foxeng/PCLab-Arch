@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<channel name="thunar" version="1.0">
+  <property name="hidden-devices" type="array">
+    <value type="string" value="C8A8A3A9A8A3948A"/>
+  </property>
+</channel>

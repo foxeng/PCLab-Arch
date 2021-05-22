@@ -1,0 +1,28 @@
+---
+- name: Upgrade system
+  hosts: pclab
+  tasks:
+  - name: Upgrade system
+    # NOTE: The upgrade is performed in parts, to avoid problems when upgrading
+    # after a long time.
+    block:
+    - name: Upgrade archlinux-keyring
+      community.general.pacman:
+        name: archlinux-keyring
+        state: latest
+        update_cache: yes
+    - name: Upgrade pacman
+      community.general.pacman:
+        name: pacman
+        state: latest
+        update_cache: yes
+    - name: Upgrade everything
+      community.general.pacman:
+        update_cache: yes
+        upgrade: yes
+    # TODO OPT: Check for and report any .pacnew and .pacsave
+    # TODO OPT: Update pip packages (if there's a generic way)?
+    tags:
+    - upgrade
+  - name: Persist changes
+    import_tasks: persist.yml
