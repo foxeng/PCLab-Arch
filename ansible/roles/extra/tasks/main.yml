@@ -116,6 +116,7 @@
         - seaborn
         - tqdm
         - networkx
+        - node2vec
         state: latest
       environment:
         TMPDIR: "{{ tmpdir }}"
