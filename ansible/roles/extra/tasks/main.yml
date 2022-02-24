@@ -156,6 +156,62 @@
         state: absent
     tags:
     - conda
+  - name: Setup weka
+    vars:
+      pkg_url: https://downloads.sourceforge.net/sourceforge/weka/weka-3-8-6-azul-zulu-linux.zip
+      local_pkg: "{{ role_path }}/files/weka-3-8-6-azul-zulu-linux.zip"
+      remote_unarchive_dir: /home/labuser/opt/weka-3-8-6
+      remote_install_dir: /home/labuser/opt/weka
+    block:
+    - name: Download local weka
+      local_action:
+        module: ansible.builtin.get_url
+        dest: "{{ local_pkg }}"
+        url: "{{ pkg_url }}"
+    - name: Install latest weka
+      ansible.builtin.unarchive:
+        src: "{{ local_pkg }}"
+        dest: "{{ remote_unarchive_dir | dirname }}"
+        owner: labuser
+        group: labuser
+    - name: Rename weka install directory
+      ansible.builtin.command: "mv {{ remote_unarchive_dir }} {{ remote_install_dir }}"
+    - name: Add script for labuser to start weka
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          # NOTE: This seems redundant, but it is necessary, because weka.sh below doesn't work if
+          # invoked through a symlink.
+          {{ remote_install_dir }}/weka.sh
+        dest: /home/labuser/.local/bin/start_weka
+        owner: labuser
+        group: labuser
+        mode: 0755
+    - name: Create local desktop files directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: labuser
+        group: labuser
+      with_items:
+      - /home/labuser/.local/share/applications
+      - /home/labuser/.local/share/icons
+    - name: Install weka.desktop file
+      ansible.builtin.copy:
+        src: weka.desktop
+        dest: /home/labuser/.local/share/applications/weka.desktop
+        owner: labuser
+        group: labuser
+        mode: 0644
+    - name: Install weka icon
+      ansible.builtin.copy:
+        src: weka.png
+        dest: /home/labuser/.local/share/icons/weka.png
+        owner: labuser
+        group: labuser
+        mode: 0644
+    tags:
+    - weka
   tags:
   - data-science
 
@@ -183,5 +239,148 @@
   tags:
   - networking
 
-# TODO OPT: tomcat mariadb java-connector phpmyadmin
+- name: Setup MariaDB
+  block:
+  - name: Install MariaDB
+    block:
+    - name: Install packages
+      community.general.pacman:
+        name:
+        - mariadb
+        state: present
+    - name: Initialize mariadb
+      ansible.builtin.command: mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+    - name: Start mariadb service
+      ansible.builtin.systemd:
+        name: mariadb
+        state: started
+        enabled: no
+    - name: Secure mariadb
+      ansible.builtin.command: mysql_secure_installation
+      args:
+        stdin: "\nn\ny\ny\ny\ny\n"
+    - name: Create labuser database and user
+      ansible.builtin.command: mysql -u root
+      args:
+        stdin: |
+          CREATE DATABASE IF NOT EXISTS labuserdb;
+          CREATE USER IF NOT EXISTS labuser@localhost IDENTIFIED BY 'labuser';
+          GRANT ALL PRIVILEGES ON labuserdb.* TO 'labuser'@'localhost';
+          FLUSH PRIVILEGES;
+    - name: Set mariadb to only listen on loopback
+      ansible.builtin.lineinfile:
+        path: /etc/my.cnf.d/server.cnf
+        insertafter: '^\[mysqld\]'
+        line: "bind-address=127.0.0.1"
+        state: present
+    - name: Allow labuser to start mariadb service
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        line: 'labuser ALL=(ALL) NOPASSWD: /usr/bin/systemctl start mysqld'
+        state: present
+    - name: Add script for labuser to start mariadb service
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          sudo systemctl start mysqld
+        dest: /home/labuser/.local/bin/start_mysql
+        owner: labuser
+        group: labuser
+        mode: 0755
+    - name: Download mariadb java connector
+      ansible.builtin.get_url:
+        url: "https://downloads.mariadb.com/Connectors/java/connector-java-3.0.3/mariadb-java-client-3.0.3.jar"
+        dest: /home/labuser/Downloads
+        owner: labuser
+        group: labuser
+        mode: 0644
+  - name: Install phpMyAdmin
+    block:
+    - name: Install phpmyadmin package
+      community.general.pacman:
+        name: phpmyadmin
+        state: present
+    - name: Enable php extensions for mysql
+      ansible.builtin.lineinfile:
+        path: /etc/php/php.ini
+        regexp: '^;extension={{ item }}'
+        line: "extension={{ item }}"
+      with_items:
+      - pdo_mysql
+      - mysqli
+      - iconv
+    - name: Add script for labuser to run phpmyadmin
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          cd /usr/share/webapps/phpMyAdmin
+          php -S localhost:8000
+        dest: /home/labuser/.local/bin/start_phpmyadmin
+        owner: labuser
+        group: labuser
+        mode: 0755
+  tags:
+  - mariadb
 
+- name: Setup netprog software
+  block:
+  - name: Install java build tools
+    community.general.pacman:
+      name:
+      - maven
+      - gradle
+      state: present
+  - name: Install tomcat 9
+    vars:
+      pkg_url: https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.59/bin/apache-tomcat-9.0.59.tar.gz
+      remote_unarchive_dir: "/home/labuser/opt/{{ ((pkg_url | basename | splitext)[0] | splitext)[0] }}"
+      remote_install_dir: /home/labuser/opt/tomcat9
+    block:
+    - name: Remove possible past tomcat 9 installation
+      ansible.builtin.file:
+        path: "{{ remote_install_dir }}"
+        state: absent
+    - name: Install latest tomcat 9
+      ansible.builtin.unarchive:
+        src: "{{ pkg_url }}"
+        remote_src: yes
+        dest: "{{ remote_unarchive_dir | dirname }}"
+        owner: labuser
+        group: labuser
+    - name: Rename tomcat 9 install directory
+      ansible.builtin.command: "mv {{ remote_unarchive_dir }} {{ remote_install_dir }}"
+    - name: Add link to tomcat startup script in path
+      ansible.builtin.file:
+        src: "{{ remote_install_dir }}/bin/startup.sh"
+        path: /home/labuser/.local/bin/start_tomcat9
+        state: link
+        owner: labuser
+        group: labuser
+  - name: Install tomcat 8
+    vars:
+      pkg_url: https://dlcdn.apache.org/tomcat/tomcat-8/v8.5.76/bin/apache-tomcat-8.5.76.tar.gz
+      remote_unarchive_dir: "/home/labuser/opt/{{ ((pkg_url | basename | splitext)[0] | splitext)[0] }}"
+      remote_install_dir: /home/labuser/opt/tomcat8
+    block:
+    - name: Remove possible past tomcat 8 installation
+      ansible.builtin.file:
+        path: "{{ remote_install_dir }}"
+        state: absent
+    - name: Install latest tomcat 8
+      ansible.builtin.unarchive:
+        src: "{{ pkg_url }}"
+        remote_src: yes
+        dest: "{{ remote_unarchive_dir | dirname }}"
+        owner: labuser
+        group: labuser
+    - name: Rename tomcat 8 install directory
+      ansible.builtin.command: "mv {{ remote_unarchive_dir }} {{ remote_install_dir }}"
+    - name: Add link to tomcat 8 startup script in path
+      ansible.builtin.file:
+        src: "{{ remote_install_dir }}/bin/startup.sh"
+        path: /home/labuser/opt/bin/start_tomcat8
+        state: link
+        owner: labuser
+        group: labuser
+  tags:
+  - netprog
