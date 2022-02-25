@@ -1,0 +1,22 @@
+---
+- name: Update for spring 2023
+  hosts: pclab
+  tasks:
+  - name: Upgrade system
+    # NOTE: The upgrade is performed in parts, to avoid problems when upgrading
+    # after a long time.
+    block:
+    - name: Upgrade archlinux-keyring
+      community.general.pacman:
+        name: archlinux-keyring
+        state: latest
+        update_cache: yes
+    - name: Upgrade everything
+      ansible.builtin.shell: "yes | pacman -Syu"
+
+  - name: Install extra optional pip dependency
+    community.general.pacman:
+      name:
+      - python-setuptools
+      state: present
+      extra_args: "--asdeps"
