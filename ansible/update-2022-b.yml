@@ -1,0 +1,34 @@
+---
+- name: Update for fall 2022
+  hosts: pclab
+  tasks:
+  - name: Upgrade system
+    # NOTE: The upgrade is performed in parts, to avoid problems when upgrading
+    # after a long time.
+    block:
+    - name: Upgrade archlinux-keyring
+      community.general.pacman:
+        name: archlinux-keyring
+        state: latest
+        update_cache: yes
+    - name: Upgrade pacman
+      community.general.pacman:
+        name: pacman
+        state: latest
+        update_cache: yes
+    - name: Temporarily remove Jupyter
+      ansible.builtin.shell: "yes | pacman -Rs jupyter-notebook jupyterlab"
+    - name: Upgrade everything
+      ansible.builtin.shell: "yes | pacman -Syu"
+    - name: Reinstall jupyter
+      community.general.pacman:
+        name: jupyterlab
+        state: present
+
+
+  - name: Install extra optional R dependency
+    community.general.pacman:
+      name:
+      - tk
+      state: present
+      extra_args: "--asdeps"
