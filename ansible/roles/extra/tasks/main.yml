@@ -87,6 +87,7 @@
         name:
         - gcc-fortran
         - openblas
+        - tk
         state: present
     tags:
     - r
