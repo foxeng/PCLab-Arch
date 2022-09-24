@@ -22,46 +22,72 @@
     ansible.builtin.command: replace-snap.sh
     tags:
     - root
-  - name: Generate GRUB configuration
-    # NOTE: This needs to happen after the above
+  - name: Setup GRUB
+    # NOTE: This needs to happen after the above, so that the subvolume we are
+    # currently booted in (root.next due to the above) matches the subvolume
+    # GRUB will be booting.
     block:
-    - name: Ensure /etc/grub.d/30_uefi-firmware is missing
-      # NOTE: This file (part of grub) adds a boot menu option to reboot into
-      # the UEFI firmware settings, which we don't want. The file will be
-      # reinstalled every time GRUB is upgraded, so removing it only once is not
-      # enough. Also, no reason bothering to keep a backup.
-      ansible.builtin.file:
-        path: /etc/grub.d/30_uefi-firmware
-        state: absent
-    - name: Generate grub.cfg
-      # TODO: If Windows can be detected without mounting, replace with a simple
-      # 'grub-mkconfig -o /boot/grub/grub.cfg'
-      ansible.builtin.shell: |
-        # All currently unmounted ntfs partitions
-        parts=$(lsblk --noheadings --list --output NAME,FSTYPE,MOUNTPOINT \
-          | awk 'NF == 2 && $2 == "ntfs" { print $1 }')
+    - name: Install GRUB
+      block:
+      - name: Check if booted in UEFI
+        ansible.builtin.stat:
+          path: /efi
+        register: efi
+      - name: Detect boot disk
+        ansible.builtin.shell: "lsblk --nodeps --noheadings --list --output PKNAME $(findmnt --first-only --mountpoint / --noheadings --nofsroot --output SOURCE)"
+        register: disk
 
-        echo "${parts}"
+      - name: Install grub (BIOS)
+        ansible.builtin.command: "grub-install --target=i386-pc /dev/{{ disk.stdout }}"
+        when: not efi.stat.exists
+      - name: Install grub (UEFI)
+        ansible.builtin.command: "grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=GRUB"
+        when: efi.stat.exists
+      tags:
+        - never
+        - grub-install  # NOTE: Disabled if this is not specified explicitly
+    - name: Configure GRUB
+      block:
+      - name: Ensure /etc/grub.d/30_uefi-firmware is missing
+        # NOTE: This file (part of grub) adds a boot menu option to reboot into
+        # the UEFI firmware settings, which we don't want. The file will be
+        # reinstalled every time GRUB is upgraded, so removing it only once is
+        # not enough. Also, no reason bothering to keep a backup.
+        ansible.builtin.file:
+          path: /etc/grub.d/30_uefi-firmware
+          state: absent
+      - name: Generate grub.cfg
+        # TODO: If Windows can be detected without mounting, replace with a
+        # simple 'grub-mkconfig -o /boot/grub/grub.cfg'
+        ansible.builtin.shell: |
+          # All currently unmounted ntfs partitions
+          parts=$(lsblk --noheadings --list --output NAME,FSTYPE,MOUNTPOINT \
+            | awk 'NF == 2 && $2 == "ntfs" { print $1 }')
 
-        mountbasedir=/mnt/update-grub
-        mkdir -p ${mountbasedir}
-        for part in ${parts}; do
-          mountpoint=${mountbasedir}/${part}
-          echo "${mountpoint}"
+          echo "${parts}"
 
-          mkdir -p ${mountpoint}
-          mount /dev/${part} ${mountpoint}
-        done
+          mountbasedir=/mnt/update-grub
+          mkdir -p ${mountbasedir}
+          for part in ${parts}; do
+            mountpoint=${mountbasedir}/${part}
+            echo "${mountpoint}"
 
-        grub-mkconfig -o /boot/grub/grub.cfg
+            mkdir -p ${mountpoint}
+            mount /dev/${part} ${mountpoint}
+          done
 
-        for part in ${parts}; do
-          mountpoint=${mountbasedir}/${part}
+          grub-mkconfig -o /boot/grub/grub.cfg
 
-          umount ${mountpoint}
-          rmdir ${mountpoint}
-        done
-        rmdir ${mountbasedir}
+          for part in ${parts}; do
+            mountpoint=${mountbasedir}/${part}
+
+            umount ${mountpoint}
+            rmdir ${mountpoint}
+          done
+          rmdir ${mountbasedir}
+      tags:
+      - grub-mkconfig
     tags:
     - grub
-  tags: persist
+  tags:
+  - persist
