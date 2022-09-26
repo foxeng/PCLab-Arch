@@ -1,0 +1,14 @@
+---
+- name: Setup time and timezone
+  hosts: pclab
+  tasks:
+  - name: Set timezone
+    community.general.timezone:
+      name: Europe/Athens
+      hwclock: local
+  - name: Set time (sync with ansible host)
+    ansible.builtin.command:
+      argv:
+      - timedatectl
+      - set-time
+      - "{{ now(fmt='%Y-%m-%d %H:%M:%S') }}"
