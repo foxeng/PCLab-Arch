@@ -229,6 +229,7 @@
         extra_args: "--asdeps"
         name:
         - bash-completion
+        - python-setuptools
         state: present
     tags:
     - utilities
