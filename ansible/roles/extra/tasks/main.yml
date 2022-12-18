@@ -118,7 +118,7 @@
         - tqdm
         - networkx
         - node2vec
-        state: latest
+        state: forcereinstall
       environment:
         TMPDIR: "{{ tmpdir }}"
     - name: Delete temp directory for pip

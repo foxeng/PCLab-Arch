@@ -22,9 +22,10 @@ configuration.
 
 - [`persist.yml`](persist.yml) makes the current configuration permanent (see
   [reversion mechanism](../reversion_mechanism.md)). Optionally re-installs GRUB
-  (if the `grub-install` tag is specified, e.g. with `--tags all,grub-install`).
+  if the `grub-install` tag is specified, e.g. with `--tags all,grub-install`.
 - [`post-install.yml`](post-install.yml) applies the necessary post-installer
   configuration (desktop, software etc.)
 - [`poweroff.yml`](poweroff.yml) powers off
 - [`reboot.yml`](reboot.yml) reboots
-- [`upgrade.yml`](upgrade.yml) upgrades installe software
+- [`upgrade.yml`](upgrade.yml) upgrades installed software. Optionally upgrades
+  pip packages if the `pip` tag is specified, e.g. with `--tags pip`.

@@ -21,8 +21,16 @@
         update_cache: yes
         upgrade: yes
     # TODO OPT: Check for and report any .pacnew and .pacsave
-    # TODO OPT: Update pip packages (if there's a generic way)?
     tags:
+    - always
     - upgrade
+  # TODO OPT: Perform the above upgrades via the roles too (using tags), to
+  # include packages possibly added post initial installation.
+  - name: Upgrade pip packages
+    include_role:
+      name: extra
+    tags:
+    - never
+    - pip
   - name: Persist changes
     import_tasks: persist.yml
