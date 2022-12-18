@@ -333,7 +333,7 @@
       state: present
   - name: Install tomcat 9
     vars:
-      pkg_url: https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.59/bin/apache-tomcat-9.0.59.tar.gz
+      pkg_url: https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.59/bin/apache-tomcat-9.0.59.tar.gz
       remote_unarchive_dir: "/home/labuser/opt/{{ ((pkg_url | basename | splitext)[0] | splitext)[0] }}"
       remote_install_dir: /home/labuser/opt/tomcat9
     block:
@@ -359,7 +359,7 @@
         group: labuser
   - name: Install tomcat 8
     vars:
-      pkg_url: https://dlcdn.apache.org/tomcat/tomcat-8/v8.5.76/bin/apache-tomcat-8.5.76.tar.gz
+      pkg_url: https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.76/bin/apache-tomcat-8.5.76.tar.gz
       remote_unarchive_dir: "/home/labuser/opt/{{ ((pkg_url | basename | splitext)[0] | splitext)[0] }}"
       remote_install_dir: /home/labuser/opt/tomcat8
     block:
