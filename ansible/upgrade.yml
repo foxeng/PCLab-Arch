@@ -11,11 +11,6 @@
         name: archlinux-keyring
         state: latest
         update_cache: yes
-    - name: Upgrade pacman
-      community.general.pacman:
-        name: pacman
-        state: latest
-        update_cache: yes
     - name: Upgrade everything
       community.general.pacman:
         update_cache: yes
