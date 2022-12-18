@@ -32,5 +32,3 @@
     tags:
     - never
     - pip
-  - name: Persist changes
-    import_tasks: persist.yml

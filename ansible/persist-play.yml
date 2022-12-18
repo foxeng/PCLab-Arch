@@ -1,0 +1,6 @@
+---
+- name: Persist system changes
+  hosts: pclab
+  tasks:
+  - name: Persist changes
+    import_tasks: persist.yml
